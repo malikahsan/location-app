@@ -1,0 +1,79 @@
+<% if @user.blank? %>
+  <div class="alert alert-danger" role="alert">
+    Location can't be show
+  </div>
+<% else %>
+  <div class="card mb-3" style="max-width: 100%;">
+    <div class="row g-0">
+      <div class="col-md-8">
+        <div id="map" tabindex="0"></div>
+      </div>
+      <div class="col-md-4">
+        <div class="card-body">
+          <h5 class="card-title">User Info</h5>
+          <p class="card-text">Fullname: <%= @user&.fullname&.titleize %></p>
+          <p class="card-text">Email: <%= @user&.email %></p>
+          <!-- <p class="card-text"><small class="text-muted">Last updated 3 mins ago</small></p> -->
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+
+<script type="text/javascript">
+  $(document).ready(function(){
+
+    const iconFeature = new ol.Feature({
+      type: 'click',
+      geometry: new ol.geom.Point(<%= @coordinate %>),
+      desc: "<%= @address&.address.to_s %>",
+    });
+
+    var vectorMarker = new ol.layer.Vector({
+      source: new ol.source.Vector({
+        features: [iconFeature]
+      }),
+      style: new ol.style.Style({
+        image: new ol.style.Icon({
+          anchor: [0.5, 46],
+          anchorXUnits: 'fraction',
+          anchorYUnits: 'pixels',
+          src: 'https://openlayers.org/en/latest/examples/data/icon.png'
+        })
+      })
+    })
+
+    var olview = new ol.View({ center: <%= @coordinate %>, zoom: 12 }),
+    baseLayer = new ol.layer.Tile({ source: new ol.source.OSM() }),
+    map = new ol.Map({
+      target: document.getElementById('map'),
+      view: olview,
+      layers: [baseLayer]
+    });
+
+    <% unless @coordinate == [0,0] %>
+      map.addLayer(vectorMarker)
+    <% end %>
+    
+
+    // popup
+    var popup = new ol.Overlay.Popup();
+    map.addOverlay(popup);
+    
+    map.on('click', function(e) {
+      var f = map.forEachFeatureAtPixel(
+        e.pixel, 
+        function(ft, layer){ return ft;}
+      );
+      if (f && f.get('type') == 'click') {
+        var geometry = f.getGeometry();
+        var coord = geometry.getCoordinates();
+        var content = f.get('desc');
+        popup.show(coord, content);
+      }else{
+        popup.hide();
+      }
+    });
+  });
+</script>

@@ -1,0 +1,138 @@
+<div id="map" tabindex="0"></div>
+<%= form_with url: profile_path(id: @user&.username.to_s), method: :put, html: {id: "form_address", class: "d-none", 'data-remote': true} do |form| %>
+  <div class="mb-3 row">
+    <%= form.label :staticAddress, "Address", class: "col-sm-2 col-form-label" %>
+    <div class="col-sm-10">
+      <%= form.text_field :address, id: "staticAddress", class: "form-control-plaintext", readonly: true %>
+    </div>
+  </div>
+
+  <div class="mb-3 row">
+    <%= form.label :staticCoordinate, "Coordinate", class: "col-sm-2 col-form-label" %>
+    <div class="col-sm-10">
+      <%= form.text_field :coordinate, id: "staticCoordinate", class: "form-control-plaintext", readonly: true %>
+    </div>
+  </div>
+
+  <div class="mb-3 row">
+    <div class="col-sm-10">
+      <%= form.select :share_type, [["Public", "public"], ["Private", "private"], ["Shared With", "selected"]], {}, {class: "form-select", aria: {label: "Default select example"}} %>
+    </div>
+  </div>
+
+  <div class="mb-3 row d-none" id="users_list">
+    <div class="col-sm-10">
+      <%= form.collection_check_boxes :user_ids, User.where.not(id: @user.id), :id, :fullname do |cb| %>
+        <div class="form-check form-check-inline">
+          <%= cb.label("data-value": cb.value) { cb.check_box + cb.text } %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="">
+    <%= form.submit "Add Location", class: "btn btn-primary mb-3" %>
+  </div>
+<% end %>
+
+<div id="flash_notif"></div>
+<script type="text/javascript">
+  $(document).ready(function(){
+
+    const iconFeature = new ol.Feature({
+      type: 'click',
+      geometry: new ol.geom.Point(<%= @coordinate %>),
+      name: 'Somewhere near Nottingham',
+      desc: "<%= @address&.address.to_s %>",
+    });
+
+    var vectorMarker = new ol.layer.Vector({
+      source: new ol.source.Vector({
+        features: [iconFeature]
+      }),
+      style: new ol.style.Style({
+        image: new ol.style.Icon({
+          anchor: [0.5, 46],
+          anchorXUnits: 'fraction',
+          anchorYUnits: 'pixels',
+          src: 'https://openlayers.org/en/latest/examples/data/icon.png'
+        })
+      })
+    })
+
+    var olview = new ol.View({ center: <%= @coordinate %>, zoom: <%= @zoom %> }),
+    baseLayer = new ol.layer.Tile({ source: new ol.source.OSM() }),
+    map = new ol.Map({
+      target: document.getElementById('map'),
+      view: olview,
+      layers: [baseLayer]
+    });
+
+    <% unless @coordinate == [0,0] %>
+      map.addLayer(vectorMarker)
+    <% end %>
+    
+
+    // popup
+    var popup = new ol.Overlay.Popup();
+    map.addOverlay(popup);
+    
+    map.on('click', function(e) {
+      var f = map.forEachFeatureAtPixel(
+        e.pixel, 
+        function(ft, layer){ return ft;}
+      );
+      if (f && f.get('type') == 'click') {
+        var geometry = f.getGeometry();
+        var coord = geometry.getCoordinates();
+        var content = f.get('desc');
+        popup.show(coord, content);
+      }else{
+        popup.hide();
+      }
+    }); 
+    
+
+    //Instantiate with some options and add the Control
+    var geocoder = new Geocoder('nominatim', {
+      provider: 'osm',
+      lang: 'en',
+      placeholder: 'Search for ...',
+      limit: 5,
+      debug: false,
+      autoComplete: true,
+      keepOpen: true
+    });
+    map.addControl(geocoder);
+      
+    //Listen when an address is chosen
+    geocoder.on('addresschosen', function (evt) {
+      console.log(evt);
+      a = evt;
+      map.removeLayer(vectorMarker);
+      
+      var feature = evt.feature,
+          coord = evt.coordinate,
+          address = evt.address;
+      geocoder.getSource().clear();
+      geocoder.getSource().addFeature(feature);
+      
+      $('#staticAddress').val(evt.place.original.formatted);
+      $('#staticCoordinate').val(evt.coordinate);
+      $('#form_address').removeClass('d-none');
+      window.setTimeout(function () {
+        popup.show(evt.coordinate, evt.address.formatted);
+      }, 3000);
+    });
+
+    $('#share_type').on('change', function(e){
+      var option_value = $("select#share_type > option:selected").val();
+      if (option_value == 'selected') {
+        $("#users_list").removeClass('d-none');
+      }else{
+        $("#users_list").addClass('d-none');
+        $("input:checkbox").prop('checked', false);
+      }
+    });
+  });
+</script>

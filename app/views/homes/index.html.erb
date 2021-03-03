@@ -1,0 +1,15 @@
+<div class="card" style="width: 18rem;">
+  <ul class="list-group list-group-flush">
+    <% if @users.blank? %>
+      <li class="list-group-item">No one users</li>
+    <% else %>
+      <% @users.each do |user| %>
+        <li class="list-group-item">
+          <%= user&.fullname&.titleize.to_s%> 
+          <%= link_to " See Location", map_path(username: user&.username) %>
+        </li>
+      <% end %>
+    <% end %>
+    
+  </ul>
+</div>
