@@ -17,7 +17,7 @@ Requirements:
 ## Usage
 
 ```git
-git clone git@github.com:malikahsan/location-app.git
+git clone https://github.com/malikahsan/location-app.git
 cd location-app
 set your own username and password on database.yml
 bundle install
